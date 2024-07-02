@@ -9,7 +9,7 @@ import sys
 from distutils.spawn import find_executable
 from zipfile import ZipFile
 
-from subprocess import call, STDOUT
+from subprocess import call, STDOUT, Popen, list2cmdline
 try:
     from subprocess import DEVNULL
 except ImportError:
@@ -102,6 +102,13 @@ def check_if_executable_exists_in_path(executable):
     path_to_cmd = find_executable(executable)
     return path_to_cmd is not None
 
+def get_path_to_batch(batch):
+    paths = os.environ['PATH'].split(os.pathsep)
+    name = batch + ".bat"
+    for path in paths:
+        if os.path.isfile(os.path.join(path, name)):
+            return os.path.join(path, name)
+    return None
 
 def create_tmp_dir(working_dir):
     path_dir_tmp = os.path.abspath(os.path.join(working_dir, const_dir_tmp))
@@ -304,19 +311,32 @@ def merge_apk_assets(dir_apk_main, dir_apk_with_asset_pack):
 def unpack_apk(path_dir_tmp, apk_file, number_current, number_total):
     print('[*] unpacking %d of %d' % (number_current, number_total))
     os.chdir(path_dir_tmp)
-    rc = execute_command_subprocess(['apktool', 'd', '-s', apk_file])
-    if rc != 0:
-        raise Exception("failed to unpack %s" % apk_file)
+    if check_if_executable_exists_in_path('apktool'):
+        rc = execute_command_subprocess(['apktool', 'd', '-s', apk_file])
+        if rc != 0:
+            raise Exception("failed to unpack %s" % apk_file)
+    else:
+        params = [get_path_to_batch('apktool'), 'd', '-s', apk_file]
+        p = Popen(list2cmdline(params))
+        _, stderr = p.communicate()
+        if stderr is not None:
+            raise Exception("failed to unpack %s" % apk_file)
     os.remove(os.path.join(path_dir_tmp, apk_file))
 
 
 def pack_apk(path_dir_tmp, main_apk_dir):
     print('[*] repack apk')
     os.chdir(path_dir_tmp)
-    rc = execute_command_subprocess(['apktool', 'b', main_apk_dir])
-    if rc != 0:
-        raise Exception("failed to pack apk")
-
+    if check_if_executable_exists_in_path('apktool'):
+        rc = execute_command_subprocess(['apktool', 'b', main_apk_dir])
+        if rc != 0:
+            raise Exception("failed to pack apk")
+    else:
+        params = [get_path_to_batch('apktool'), 'b', main_apk_dir]
+        p = Popen(list2cmdline(params))
+        _, stderr = p.communicate()
+        if stderr is not None:
+            raise Exception("failed to pack %s" % main_apk_dir)
     built_apk_file_path = os.path.join(path_dir_tmp, main_apk_dir, 'dist', '%s%s' % (os.path.basename(main_apk_dir), const_ext_apk))
     if not os.path.exists(built_apk_file_path):
         raise Exception("result apk not found")
@@ -358,9 +378,16 @@ def sign_apk(path_dir_tmp, sign_config):
 
     print('[*] resign apk')
     os.chdir(path_dir_tmp)
-    rc = execute_command_subprocess(['apksigner', 'sign', '--ks', sign_config['sign.keystore.file'], '--ks-pass', 'pass:%s' % sign_config['sign.keystore.password'], '--ks-key-alias', sign_config['sign.key.alias'], '--key-pass', 'pass:%s' % sign_config['sign.key.password'], build_apk_target_file])
-    if rc != 0:
-        raise Exception("failed to sign apk file")
+    if check_if_executable_exists_in_path('apksigner'):
+        rc = execute_command_subprocess(['apksigner', 'sign', '--ks', os.path.expanduser(sign_config['sign.keystore.file']), '--ks-pass', 'pass:%s' % sign_config['sign.keystore.password'], '--ks-key-alias', sign_config['sign.key.alias'], '--key-pass', 'pass:%s' % sign_config['sign.key.password'], build_apk_target_file])
+        if rc != 0:
+            raise Exception("failed to sign apk file")
+    else:
+        params = [get_path_to_batch('apksigner'), 'sign', '--ks', os.path.expanduser(sign_config['sign.keystore.file']), '--ks-pass', 'pass:%s' % sign_config['sign.keystore.password'], '--ks-key-alias', sign_config['sign.key.alias'], '--key-pass', 'pass:%s' % sign_config['sign.key.password'], build_apk_target_file]
+        p = Popen(list2cmdline(params))
+        _, stderr = p.communicate()
+        if stderr is not None:
+            raise Exception("failed to sign apk file")
 
 
 def delete_file_if_exists(path_to_file):
@@ -426,7 +453,7 @@ def load_sign_properties():
         return None
     if 'sign.keystore.file' not in properties.keys() or 'sign.keystore.password' not in properties.keys() or 'sign.key.alias' not in properties.keys() or 'sign.key.password' not in properties.keys():
         return None
-    keystore_file = properties['sign.keystore.file']
+    keystore_file = os.path.expanduser(properties['sign.keystore.file'])
     if keystore_file == '' or not os.path.exists(keystore_file) or os.path.isdir(keystore_file):
         return None
     if properties['sign.keystore.password'] == '' or properties['sign.key.alias'] == '' or properties['sign.key.password'] == '':
@@ -440,6 +467,8 @@ def build_single_apk(path_to_tmp_dir, path_to_main_apk_dir, should_sign_apk, sig
     zipalign_apk(path_to_tmp_dir)
     if should_sign_apk:
         sign_apk(path_to_tmp_dir, sign_config)
+    else:
+        print('[*] skip signing apk')
 
 
 def copy_single_apk_to_working_dir(path_to_tmp_dir, path_to_working_dir, target_name):
@@ -488,7 +517,7 @@ def main():
         exit(-1)
 
     tested_binary = "apktool"
-    if not check_if_executable_exists_in_path(tested_binary):
+    if not check_if_executable_exists_in_path(tested_binary) and get_path_to_batch(tested_binary) is None:
         print("executable %s not found in $PATH, please install it before running xapktoapk" % tested_binary)
         exit(-2)
 
@@ -501,7 +530,7 @@ def main():
     should_sign_apk = sign_properties is not None
     if should_sign_apk:
         tested_binary = "apksigner"
-        if not check_if_executable_exists_in_path(tested_binary):
+        if not check_if_executable_exists_in_path(tested_binary) and get_path_to_batch(tested_binary) is None:
             print("executable %s not found in $PATH, please install it before running xapktoapk" % tested_binary)
             exit(-2)
 
@@ -579,6 +608,7 @@ def main():
     build_single_apk(path_dir_tmp, apk_main['apk_dir_path'], should_sign_apk, sign_properties)
     copy_single_apk_to_working_dir(path_dir_tmp, cwd, original_file_name)
 
+    os.chdir(cwd)
     shutil.rmtree(path_dir_tmp)
 
     print('[*] complete')
