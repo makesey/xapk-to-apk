@@ -27,7 +27,7 @@ const_file_xapk_manifest_key_package_name = "package_name"
 
 const_prefix_apk_split_type_config = "config"
 const_suffix_apk_split_type_dpi = "dpi"
-const_values_apk_split_type_arch = [ "arm64_v8a", "armeabi", "x86", "x86_64" ]
+const_values_apk_split_type_arch = [ "arm64_v8a", "armeabi_v7a", "armeabi", "x86", "x86_64" ]
 
 const_split_apk_type_main = "main"
 const_split_apk_type_arch = "arch"
