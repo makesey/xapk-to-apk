@@ -406,8 +406,12 @@ def update_main_manifest_file(path_main_apk):
     path_manifest = os.path.join(path_main_apk, 'AndroidManifest.xml')
     data = None
 
-    application_propertry_splits_required_from = ' android:isSplitRequired="true" '
-    application_propertry_splits_required_to = ' '
+    application_property_splits_required_from = ' android:isSplitRequired="true" '
+    application_property_splits_required_to = ' '
+    application_property_required_split_types_from = 'android:requiredSplitTypes="base__abi,base__density"'
+    application_property_required_split_types_to = ' '
+    application_property_split_types_from = 'android:splitTypes=""'
+    application_property_split_types_to = ' '
     metadata_google_play_splits_required_from = '<meta-data android:name="com.android.vending.splits.required" android:value="true"/>'
     metadata_google_play_splits_required_to = ''
     metadata_google_play_splits_list_from = '<meta-data android:name="com.android.vending.splits" android:resource="@xml/splits0"/>'
@@ -417,7 +421,9 @@ def update_main_manifest_file(path_main_apk):
 
     with open(path_manifest, 'r') as file:
         data = file.read()
-    data = data.replace(application_propertry_splits_required_from, application_propertry_splits_required_to)
+    data = data.replace(application_property_splits_required_from, application_property_splits_required_to)
+    data = data.replace(application_property_required_split_types_from, application_property_required_split_types_to)
+    data = data.replace(application_property_split_types_from, application_property_split_types_to)
     data = data.replace(metadata_google_play_splits_required_from, metadata_google_play_splits_required_to)
     data = data.replace(metadata_google_play_splits_list_from, metadata_google_play_splits_list_to)
     data = data.replace(metadata_google_play_stamp_type_from, metadata_google_play_stamp_type_to)
