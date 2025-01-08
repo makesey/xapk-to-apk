@@ -407,6 +407,8 @@ def update_main_manifest_file(path_main_apk):
     data = None
 
     replacements = {
+        'android:extractNativeLibs="false"': 'android:extractNativeLibs="true"',
+
         'android:isSplitRequired="true" ': '',
         'android:requiredSplitTypes="base__abi,base__density" ': '',
         'android:splitTypes="" ': '',
