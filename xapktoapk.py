@@ -406,21 +406,21 @@ def update_main_manifest_file(path_main_apk):
     path_manifest = os.path.join(path_main_apk, 'AndroidManifest.xml')
     data = None
 
-    application_propertry_splits_required_from = ' android:isSplitRequired="true" '
-    application_propertry_splits_required_to = ' '
-    metadata_google_play_splits_required_from = '<meta-data android:name="com.android.vending.splits.required" android:value="true"/>'
-    metadata_google_play_splits_required_to = ''
-    metadata_google_play_splits_list_from = '<meta-data android:name="com.android.vending.splits" android:resource="@xml/splits0"/>'
-    metadata_google_play_splits_list_to = ''
-    metadata_google_play_stamp_type_from = 'android:value="STAMP_TYPE_DISTRIBUTION_APK"'
-    metadata_google_play_stamp_type_to = 'android:value="STAMP_TYPE_STANDALONE_APK"'
+    replacements = {
+        'android:isSplitRequired="true" ': '',
+        'android:requiredSplitTypes="base__abi,base__density" ': '',
+        'android:splitTypes="" ': '',
+        'android:value="STAMP_TYPE_DISTRIBUTION_APK"': 'android:value="STAMP_TYPE_STANDALONE_APK"',
+        '<meta-data android:name="com.android.vending.splits.required" android:value="true"/>': '',
+        '<meta-data android:name="com.android.vending.splits" android:resource="@xml/splits0"/>': ''
+    }
 
     with open(path_manifest, 'r') as file:
         data = file.read()
-    data = data.replace(application_propertry_splits_required_from, application_propertry_splits_required_to)
-    data = data.replace(metadata_google_play_splits_required_from, metadata_google_play_splits_required_to)
-    data = data.replace(metadata_google_play_splits_list_from, metadata_google_play_splits_list_to)
-    data = data.replace(metadata_google_play_stamp_type_from, metadata_google_play_stamp_type_to)
+
+    for from_str, to_str in replacements.items():
+        data = data.replace(from_str, to_str)    
+    
     with open(path_manifest, 'w') as file:
         file.write(data)
 
