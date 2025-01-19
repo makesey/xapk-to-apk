@@ -408,7 +408,6 @@ def update_main_manifest_file(path_main_apk):
 
     replacements = {
         '<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@null"/>': '',
-
         'android:isSplitRequired="true" ': '',
         'android:requiredSplitTypes="base__abi,base__density" ': '',
         'android:splitTypes="" ': '',
